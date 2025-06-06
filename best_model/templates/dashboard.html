@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PM2.5 Prediction Dashboard</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .header {
+        text-align: center;
+        color: white;
+        margin-bottom: 30px;
+      }
+
+      .header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      }
+
+      .header p {
+        font-size: 1.1rem;
+        opacity: 0.9;
+      }
+
+      .dashboard {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        margin-bottom: 30px;
+      }
+
+      .card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(10px);
+      }
+
+      .card h2 {
+        color: #333;
+        margin-bottom: 20px;
+        font-size: 1.5rem;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #555;
+        font-weight: 600;
+      }
+
+      .form-group input {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e1e1e1;
+        border-radius: 8px;
+        font-size: 16px;
+        transition: border-color 0.3s ease;
+      }
+
+      .form-group input:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+
+      .btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+        width: 100%;
+      }
+
+      .btn:hover {
+        transform: translateY(-2px);
+      }
+
+      .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .prediction-result {
+        margin-top: 20px;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        min-height: 100px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .prediction-value {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 10px;
+      }
+
+      .air-quality {
+        font-size: 1.2rem;
+        font-weight: 600;
+      }
+
+      .history {
+        grid-column: 1 / -1;
+      }
+
+      .history-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+      }
+
+      .history-table th,
+      .history-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #e1e1e1;
+      }
+
+      .history-table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        color: #333;
+      }
+
+      .loading {
+        text-align: center;
+        color: #667eea;
+        font-style: italic;
+      }
+
+      .error {
+        color: #e74c3c;
+        background-color: #fdeaea;
+        padding: 10px;
+        border-radius: 5px;
+        margin-top: 10px;
+      }
+
+      .status-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+      }
+
+      .status-online {
+        background-color: #27ae60;
+      }
+
+      .status-offline {
+        background-color: #e74c3c;
+      }
+
+      @media (max-width: 768px) {
+        .dashboard {
+          grid-template-columns: 1fr;
+        }
+
+        .header h1 {
+          font-size: 2rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🌬️ PM2.5 Prediction Dashboard</h1>
+        <p>Real-time Air Quality Prediction using Machine Learning</p>
+        <p>
+          <span
+            id="status-indicator"
+            class="status-indicator status-offline"
+          ></span
+          ><span id="status-text">Checking connection...</span>
+        </p>
+      </div>
+
+      <div class="dashboard">
+        <div class="card">
+          <h2>📊 Make Prediction</h2>
+          <form id="prediction-form">
+            <div class="form-group">
+              <label for="temperature">Temperature (°C)</label>
+              <input
+                type="number"
+                id="temperature"
+                step="0.1"
+                placeholder="e.g., 25.5"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="humidity">Humidity (%)</label>
+              <input
+                type="number"
+                id="humidity"
+                step="0.1"
+                min="0"
+                max="100"
+                placeholder="e.g., 60.2"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="datetime">Date & Time (Optional)</label>
+              <input type="datetime-local" id="datetime" />
+            </div>
+
+            <button type="submit" class="btn" id="predict-btn">
+              🔮 Predict PM2.5
+            </button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2>📈 Prediction Result</h2>
+          <div id="prediction-result" class="prediction-result">
+            <div style="color: #999; font-size: 1.1rem">
+              Enter temperature and humidity to get PM2.5 prediction
+            </div>
+          </div>
+        </div>
+
+        <div class="card history">
+          <h2>📝 Prediction History</h2>
+          <div id="history-content">
+            <p style="color: #999; text-align: center">
+              No predictions made yet
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let predictionHistory = JSON.parse(
+        localStorage.getItem("predictionHistory") || "[]"
+      );
+
+      // Check API health on page load
+      checkAPIHealth();
+
+      async function checkAPIHealth() {
+        try {
+          const response = await fetch("/api/health");
+          const data = await response.json();
+
+          if (data.status === "healthy") {
+            document.getElementById("status-indicator").className =
+              "status-indicator status-online";
+            document.getElementById("status-text").textContent =
+              data.model_loaded ? "Model Ready" : "Model Not Loaded";
+          } else {
+            throw new Error("API not healthy");
+          }
+        } catch (error) {
+          document.getElementById("status-indicator").className =
+            "status-indicator status-offline";
+          document.getElementById("status-text").textContent = "API Offline";
+        }
+      }
+
+      document
+        .getElementById("prediction-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const temperature = parseFloat(
+            document.getElementById("temperature").value
+          );
+          const humidity = parseFloat(
+            document.getElementById("humidity").value
+          );
+          const datetime = document.getElementById("datetime").value;
+
+          // Show loading state
+          const predictBtn = document.getElementById("predict-btn");
+          const resultDiv = document.getElementById("prediction-result");
+
+          predictBtn.disabled = true;
+          predictBtn.textContent = "🔄 Predicting...";
+          resultDiv.innerHTML =
+            '<div class="loading">Making prediction...</div>';
+
+          try {
+            const response = await fetch("/api/predict", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                temperature: temperature,
+                humidity: humidity,
+                datetime: datetime || null,
+              }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+              // Display result
+              displayPredictionResult(data);
+
+              // Add to history
+              addToHistory(data);
+
+              // Update history display
+              updateHistoryDisplay();
+            } else {
+              throw new Error(data.error || "Prediction failed");
+            }
+          } catch (error) {
+            resultDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+          } finally {
+            predictBtn.disabled = false;
+            predictBtn.textContent = "🔮 Predict PM2.5";
+          }
+        });
+
+      function displayPredictionResult(data) {
+        const resultDiv = document.getElementById("prediction-result");
+
+        resultDiv.style.backgroundColor = getBackgroundColor(data.color);
+        resultDiv.style.color = data.color === "yellow" ? "#333" : "white";
+
+        resultDiv.innerHTML = `
+                <div class="prediction-value">${
+                  data.pm25_prediction
+                } μg/m³</div>
+                <div class="air-quality">${data.air_quality}</div>
+                <small style="opacity: 0.8; margin-top: 10px; display: block;">
+                    ${new Date(data.timestamp).toLocaleString()}
+                </small>
+            `;
+      }
+
+      function getBackgroundColor(color) {
+        const colorMap = {
+          green: "#27ae60",
+          yellow: "#f1c40f",
+          orange: "#e67e22",
+          red: "#e74c3c",
+          purple: "#9b59b6",
+        };
+        return colorMap[color] || "#95a5a6";
+      }
+
+      function addToHistory(data) {
+        const historyItem = {
+          timestamp: data.timestamp,
+          temperature: data.input.temperature,
+          humidity: data.input.humidity,
+          pm25: data.pm25_prediction,
+          quality: data.air_quality,
+          color: data.color,
+        };
+
+        predictionHistory.unshift(historyItem);
+
+        // Keep only last 10 predictions
+        if (predictionHistory.length > 10) {
+          predictionHistory = predictionHistory.slice(0, 10);
+        }
+
+        // Save to localStorage
+        localStorage.setItem(
+          "predictionHistory",
+          JSON.stringify(predictionHistory)
+        );
+      }
+
+      function updateHistoryDisplay() {
+        const historyContent = document.getElementById("history-content");
+
+        if (predictionHistory.length === 0) {
+          historyContent.innerHTML =
+            '<p style="color: #999; text-align: center;">No predictions made yet</p>';
+          return;
+        }
+
+        let tableHTML = `
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Temp (°C)</th>
+                            <th>Humidity (%)</th>
+                            <th>PM2.5 (μg/m³)</th>
+                            <th>Air Quality</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+        predictionHistory.forEach((item) => {
+          tableHTML += `
+                    <tr>
+                        <td>${new Date(item.timestamp).toLocaleString()}</td>
+                        <td>${item.temperature}</td>
+                        <td>${item.humidity}</td>
+                        <td style="color: ${getBackgroundColor(
+                          item.color
+                        )}; font-weight: bold;">${item.pm25}</td>
+                        <td>${item.quality}</td>
+                    </tr>
+                `;
+        });
+
+        tableHTML += "</tbody></table>";
+        historyContent.innerHTML = tableHTML;
+      }
+
+      // Initialize history display
+      updateHistoryDisplay();
+
+      // Auto-refresh API health every 30 seconds
+      setInterval(checkAPIHealth, 30000);
+    </script>
+  </body>
+</html>
