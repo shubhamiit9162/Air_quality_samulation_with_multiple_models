@@ -18,4 +18,15 @@ Usage:
 Data Flow Pipeline
 
 Raw CSV Data → Data Loading → Preprocessing → Feature Engineering → Model Training → Prediction → Evaluation → Visualization
+
 # Air_quality_samulation_with_multiple_models
+
+how model -> result looks like:
+
+![model_output](/img7.png)
+![model_output](/img2.png)
+![model_output](/img3.png)
+![model_output](/img4.png)
+![model_output](/img5.png)
+![model_output](/img6.png)
+![model_output](/img7.png)
